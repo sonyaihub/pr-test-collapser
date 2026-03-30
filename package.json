@@ -1,0 +1,17 @@
+{
+  "name": "pr-test-collapser",
+  "private": true,
+  "scripts": {
+    "build:ts": "bun build src/content.ts --format=iife --outfile=dist/content.js && bun build src/popup.ts --format=iife --outfile=dist/popup.js",
+    "build:css": "bunx @tailwindcss/cli -i src/popup.css -o dist/popup.css --minify",
+    "build:static": "cp manifest.json dist/ && cp -r icons dist/ && cp src/popup.html dist/",
+    "build": "rm -rf dist && mkdir -p dist && bun run build:ts && bun run build:css && bun run build:static",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.2.2",
+    "@types/chrome": "^0.1.38",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^6.0.2"
+  }
+}

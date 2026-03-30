@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+/* Toggle switch — pseudo-element transitions don't map to Tailwind utilities */
+.toggle {
+  @apply relative w-10 h-[22px];
+}
+
+.toggle input {
+  @apply opacity-0 w-0 h-0;
+}
+
+.toggle .slider {
+  @apply absolute inset-0 bg-[#d1d9e0] rounded-full cursor-pointer transition-colors duration-200;
+}
+
+.toggle .slider::before {
+  content: "";
+  @apply absolute h-4 w-4 left-[3px] bottom-[3px] bg-white rounded-full transition-transform duration-200;
+}
+
+.toggle input:checked + .slider {
+  @apply bg-[#1f883d];
+}
+
+.toggle input:checked + .slider::before {
+  transform: translateX(18px);
+}

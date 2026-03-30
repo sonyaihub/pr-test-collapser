@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body class="w-[300px] font-sans text-[13px] text-[#1f2328] bg-white">
+
+  <!-- Header -->
+  <div class="p-4 border-b border-[#d1d9e0] flex items-center gap-2.5">
+    <div class="w-7 h-7 bg-[#ddf4ff] rounded-lg flex items-center justify-center text-sm shrink-0 font-semibold text-[#0969da]">T</div>
+    <div>
+      <h1 class="text-sm font-semibold leading-tight">PR Test File Collapser</h1>
+      <p class="text-[11px] text-[#656d76] leading-tight">Focus on what matters in code review</p>
+    </div>
+  </div>
+
+  <!-- PR active view -->
+  <div id="pr-view" class="p-4 hidden">
+    <!-- Toggle -->
+    <div class="flex items-center justify-between px-3 py-2.5 bg-[#f6f8fa] rounded-lg mb-3">
+      <label for="enabled" class="font-medium text-[13px]">Auto-collapse tests</label>
+      <div class="toggle">
+        <input type="checkbox" id="enabled" checked>
+        <span class="slider"></span>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 gap-2 mb-3">
+      <div class="p-2.5 bg-[#f6f8fa] rounded-lg text-center">
+        <div class="text-xl font-semibold text-[#0969da]" id="test-count">-</div>
+        <div class="text-[11px] text-[#656d76] mt-0.5">Test files</div>
+      </div>
+      <div class="p-2.5 bg-[#f6f8fa] rounded-lg text-center">
+        <div class="text-xl font-semibold text-[#0969da]" id="total-count">-</div>
+        <div class="text-[11px] text-[#656d76] mt-0.5">Total files</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex gap-2">
+      <button id="expand-btn"
+        class="flex-1 py-2 px-3 border border-[#d1d9e0] rounded-md bg-[#f6f8fa] text-xs font-medium cursor-pointer text-[#1f2328] hover:bg-[#eaeef2] transition-colors">
+        Expand all tests
+      </button>
+      <button id="collapse-btn"
+        class="flex-1 py-2 px-3 border border-[#1a7f37] rounded-md bg-[#1f883d] text-xs font-medium cursor-pointer text-white hover:bg-[#1a7f37] transition-colors">
+        Collapse tests
+      </button>
+    </div>
+  </div>
+
+  <!-- Not on PR view -->
+  <div id="not-pr-view" class="py-6 px-4 text-center text-[#656d76] hidden">
+    <div class="text-2xl mb-2">&#128269;</div>
+    <p>Navigate to a GitHub PR's<br><strong class="font-semibold">Files changed</strong> tab to get started.</p>
+  </div>
+
+  <!-- Footer -->
+  <div class="px-4 py-3 border-t border-[#d1d9e0] flex items-center justify-center gap-3 text-[11px] text-[#656d76]">
+    <a id="feedback-link" href="https://github.com/sonyatalona/pr-test-collapser/issues" target="_blank" rel="noopener noreferrer"
+      class="hover:text-[#0969da] transition-colors">
+      Suggestions &amp; feedback
+    </a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
