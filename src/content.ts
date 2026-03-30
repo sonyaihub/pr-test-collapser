@@ -1,6 +1,9 @@
-// Common test file patterns across languages and frameworks
+export {};
+
+// ---------------------------------------------------------------------------
+// Test file patterns
+// ---------------------------------------------------------------------------
 const TEST_PATTERNS: RegExp[] = [
-  // JavaScript / TypeScript
   /\.test\.[jt]sx?$/,
   /\.spec\.[jt]sx?$/,
   /\.tests\.[jt]sx?$/,
@@ -8,60 +11,41 @@ const TEST_PATTERNS: RegExp[] = [
   /__tests__\//,
   /__mocks__\//,
   /\btests?\//i,
-
-  // Go
   /_test\.go$/,
-
-  // Python
   /test_[^/]+\.py$/,
   /[^/]+_test\.py$/,
   /tests\.py$/,
   /conftest\.py$/,
-
-  // Ruby
   /_spec\.rb$/,
   /_test\.rb$/,
   /spec\//,
-
-  // Java / Kotlin
   /Test\.java$/,
   /Test\.kt$/,
   /Tests\.java$/,
   /Tests\.kt$/,
   /src\/test\//,
-
-  // C# / .NET
   /Tests?\.cs$/,
   /\.Tests\//,
-
-  // Rust
   /tests\.rs$/,
   /tests\//,
-
-  // PHP
   /Test\.php$/,
-
-  // Elixir
   /_test\.exs$/,
-
-  // Swift
   /Tests\.swift$/,
   /Tests\//,
-
-  // Snapshot / fixture files
   /__snapshots__\//,
   /\.snap$/,
   /fixtures?\//i,
 ];
 
 function isTestFile(filePath: string): boolean {
-  return TEST_PATTERNS.some((pattern) => pattern.test(filePath));
+  return TEST_PATTERNS.some((p) => p.test(filePath));
 }
 
 // ---------------------------------------------------------------------------
 // UI adapter interface
 // ---------------------------------------------------------------------------
 interface UIAdapter {
+  name: string;
   getFileDiffs(): NodeListOf<Element> | Element[];
   getFilePath(fileEl: Element): string;
   collapseFile(fileEl: Element): boolean;
@@ -84,309 +68,238 @@ function isNewChangesUI(): boolean {
 // ---------------------------------------------------------------------------
 // Classic /files UI
 // ---------------------------------------------------------------------------
-function getFileDiffsClassic(): NodeListOf<Element> {
-  return document.querySelectorAll(
-    ".file[data-tagsearch-path], .file[id^='diff-']"
-  );
-}
+const classicAdapter: UIAdapter = {
+  name: "classic",
 
-function getFilePathClassic(fileEl: Element): string {
-  const path = fileEl.getAttribute("data-tagsearch-path");
-  if (path) return path;
+  getFileDiffs() {
+    return document.querySelectorAll(
+      ".file[data-tagsearch-path], .file[id^='diff-']"
+    );
+  },
 
-  const link = fileEl.querySelector(
-    ".file-header a[title], .file-info a[title]"
-  );
-  if (link) return link.getAttribute("title") ?? "";
+  getFilePath(fileEl) {
+    return (
+      fileEl.getAttribute("data-tagsearch-path") ??
+      fileEl
+        .querySelector(".file-header a[title], .file-info a[title]")
+        ?.getAttribute("title") ??
+      fileEl
+        .querySelector(".file-header [data-clipboard-text]")
+        ?.getAttribute("data-clipboard-text") ??
+      fileEl.querySelector(".file-header")?.textContent?.trim().split("\n")[0].trim() ??
+      ""
+    );
+  },
 
-  const clipBtn = fileEl.querySelector(".file-header [data-clipboard-text]");
-  if (clipBtn) return clipBtn.getAttribute("data-clipboard-text") ?? "";
+  collapseFile(fileEl) {
+    const details = fileEl.querySelector(
+      "details.js-details-container"
+    ) as HTMLDetailsElement | null;
+    if (details?.open) {
+      details.open = false;
+      return true;
+    }
 
-  const header = fileEl.querySelector(".file-header");
-  if (header) return header.textContent?.trim().split("\n")[0].trim() ?? "";
+    const toggleBtn = fileEl.querySelector(
+      'button[aria-label="Toggle diff contents"], button.js-details-target'
+    ) as HTMLButtonElement | null;
+    if (toggleBtn?.getAttribute("aria-expanded") === "true") {
+      toggleBtn.click();
+      return true;
+    }
 
-  return "";
-}
+    const chevron = fileEl
+      .querySelector(
+        ".file-header .js-toggle-file-notes, .file-header .octicon-chevron-down"
+      )
+      ?.closest("button") as HTMLButtonElement | null;
+    if (chevron) {
+      chevron.click();
+      return true;
+    }
 
-function collapseFileClassic(fileEl: Element): boolean {
-  const details = fileEl.querySelector(
-    "details.js-details-container"
-  ) as HTMLDetailsElement | null;
-  if (details?.open) {
-    details.open = false;
-    return true;
-  }
-
-  const toggleBtn = fileEl.querySelector(
-    'button[aria-label="Toggle diff contents"], button.js-details-target'
-  ) as HTMLButtonElement | null;
-  if (toggleBtn?.getAttribute("aria-expanded") === "true") {
-    toggleBtn.click();
-    return true;
-  }
-
-  const chevron = fileEl
-    .querySelector(
-      ".file-header .js-toggle-file-notes, .file-header .octicon-chevron-down"
-    )
-    ?.closest("button") as HTMLButtonElement | null;
-  if (chevron) {
-    chevron.click();
-    return true;
-  }
-
-  const diffBody =
-    (fileEl.querySelector(".js-file-content") as HTMLElement) ??
-    (fileEl.querySelector(".blob-wrapper") as HTMLElement) ??
-    (fileEl.querySelector("[data-diff-anchor]") as HTMLElement);
-  if (diffBody && diffBody.style.display !== "none") {
-    diffBody.style.display = "none";
-    fileEl.setAttribute("data-test-collapser-hidden", "true");
-    return true;
-  }
-
-  return false;
-}
-
-function expandFileClassic(fileEl: Element): void {
-  const details = fileEl.querySelector(
-    "details.js-details-container"
-  ) as HTMLDetailsElement | null;
-  if (details && !details.open) {
-    details.open = true;
-    return;
-  }
-
-  const toggleBtn = fileEl.querySelector(
-    'button[aria-label="Toggle diff contents"], button.js-details-target'
-  ) as HTMLButtonElement | null;
-  if (toggleBtn?.getAttribute("aria-expanded") === "false") {
-    toggleBtn.click();
-    return;
-  }
-
-  if (fileEl.getAttribute("data-test-collapser-hidden") === "true") {
     const diffBody =
       (fileEl.querySelector(".js-file-content") as HTMLElement) ??
       (fileEl.querySelector(".blob-wrapper") as HTMLElement) ??
       (fileEl.querySelector("[data-diff-anchor]") as HTMLElement);
-    if (diffBody) {
-      diffBody.style.display = "";
-      fileEl.removeAttribute("data-test-collapser-hidden");
+    if (diffBody && diffBody.style.display !== "none") {
+      diffBody.style.display = "none";
+      fileEl.setAttribute("data-test-collapser-hidden", "true");
+      return true;
     }
-  }
-}
 
-function addTestBadgeClassic(fileEl: Element): void {
-  if (fileEl.querySelector(".test-collapser-badge")) return;
+    return false;
+  },
 
-  const header = fileEl.querySelector(".file-header");
-  if (!header) return;
+  expandFile(fileEl) {
+    const details = fileEl.querySelector(
+      "details.js-details-container"
+    ) as HTMLDetailsElement | null;
+    if (details && !details.open) {
+      details.open = true;
+      return;
+    }
 
-  const badge = createBadge();
-  const fileInfo =
-    header.querySelector(".file-info") ??
-    header.querySelector(".Truncate") ??
-    header;
-  fileInfo.appendChild(badge);
-}
+    const toggleBtn = fileEl.querySelector(
+      'button[aria-label="Toggle diff contents"], button.js-details-target'
+    ) as HTMLButtonElement | null;
+    if (toggleBtn?.getAttribute("aria-expanded") === "false") {
+      toggleBtn.click();
+      return;
+    }
 
-function getObserverTargetClassic(): Element {
-  return (
-    document.querySelector("#files") ??
-    document.querySelector(".js-diff-progressive-container") ??
-    document.querySelector("[data-target='diff-layout.mainContainer']") ??
-    document.body
-  );
-}
+    if (fileEl.getAttribute("data-test-collapser-hidden") === "true") {
+      const diffBody =
+        (fileEl.querySelector(".js-file-content") as HTMLElement) ??
+        (fileEl.querySelector(".blob-wrapper") as HTMLElement) ??
+        (fileEl.querySelector("[data-diff-anchor]") as HTMLElement);
+      if (diffBody) {
+        diffBody.style.display = "";
+        fileEl.removeAttribute("data-test-collapser-hidden");
+      }
+    }
+  },
 
-function hasNewFilesClassic(mutations: MutationRecord[]): boolean {
-  return mutations.some((m) =>
-    Array.from(m.addedNodes).some(
-      (n) =>
-        n.nodeType === 1 &&
-        ((n as Element).matches?.(
-          ".file[data-tagsearch-path], .file[id^='diff-']"
-        ) ||
-          (n as Element).querySelector?.(
-            ".file[data-tagsearch-path], .file[id^='diff-']"
-          ))
-    )
-  );
-}
+  addTestBadge(fileEl) {
+    if (fileEl.querySelector(".test-collapser-badge")) return;
+    const target =
+      fileEl.querySelector(".file-info") ??
+      fileEl.querySelector(".Truncate") ??
+      fileEl.querySelector(".file-header");
+    target?.appendChild(createBadge());
+  },
+
+  getObserverTarget() {
+    return (
+      document.querySelector("#files") ??
+      document.querySelector(".js-diff-progressive-container") ??
+      document.querySelector("[data-target='diff-layout.mainContainer']") ??
+      document.body
+    );
+  },
+
+  hasNewFiles(mutations) {
+    const sel = ".file[data-tagsearch-path], .file[id^='diff-']";
+    return mutations.some((m) =>
+      Array.from(m.addedNodes).some(
+        (n) =>
+          n.nodeType === 1 &&
+          ((n as Element).matches?.(sel) ||
+            (n as Element).querySelector?.(sel))
+      )
+    );
+  },
+};
 
 // ---------------------------------------------------------------------------
 // New /changes UI
 // ---------------------------------------------------------------------------
-function getFileDiffsNew(): NodeListOf<Element> {
-  return document.querySelectorAll(
-    '[class*="PullRequestDiffsList-module__diffEntry"], [class*="Diff-module__diff__"]'
-  );
-}
-
-function getFilePathNew(fileEl: Element): string {
-  const nameEl = fileEl.querySelector('[class*="file-name"]');
-  if (nameEl) {
-    return (
-      nameEl.textContent
-        ?.replace(/[\u200E\u200F\u202A-\u202E]/g, "")
-        .trim() ?? ""
-    );
-  }
-
-  const clipBtn = fileEl.querySelector("[data-clipboard-text]");
-  if (clipBtn) return clipBtn.getAttribute("data-clipboard-text") ?? "";
-
-  return "";
-}
-
 function isCollapsedNew(fileEl: Element): boolean {
   const header = fileEl.querySelector('[class*="diff-file-header"]');
   if (header?.className.includes("collapsed")) return true;
-
-  const chevron = fileEl.querySelector(".octicon-chevron-right");
-  if (chevron) {
-    const btn = chevron.closest("button");
-    const tooltip = btn?.nextElementSibling;
-    if (tooltip?.textContent?.trim() === "Expand file") return true;
-  }
-
+  if (fileEl.querySelector(".octicon-chevron-right")) return true;
   return false;
 }
 
-function getCollapseButtonNew(fileEl: Element): HTMLButtonElement | null {
-  const chevron = fileEl.querySelector(".octicon-chevron-down");
-  if (!chevron) return null;
-
-  const btn = chevron.closest("button") as HTMLButtonElement | null;
-  if (!btn) return null;
-
-  const tooltip = btn.nextElementSibling;
-  if (
-    tooltip?.textContent?.trim() === "Collapse file" ||
-    tooltip?.textContent?.trim() === "Expand file"
-  ) {
-    return btn;
-  }
-
-  const header = btn.closest('[class*="diff-file-header"]');
-  if (header?.querySelector("button") === btn) return btn;
-
-  return null;
+function getToggleButtonNew(fileEl: Element): HTMLButtonElement | null {
+  const header = fileEl.querySelector('[class*="diff-file-header"]');
+  return header?.querySelector("button") as HTMLButtonElement | null;
 }
 
-function getExpandButtonNew(fileEl: Element): HTMLButtonElement | null {
-  const chevron = fileEl.querySelector(".octicon-chevron-right");
-  if (!chevron) return null;
+const newAdapter: UIAdapter = {
+  name: "new-changes",
 
-  const btn = chevron.closest("button") as HTMLButtonElement | null;
-  if (!btn) return null;
+  getFileDiffs() {
+    const entries = document.querySelectorAll(
+      '[class*="PullRequestDiffsList-module__diffEntry"]'
+    );
+    if (entries.length > 0) return entries;
+    return document.querySelectorAll('[class*="Diff-module__diff__"]');
+  },
 
-  const tooltip = btn.nextElementSibling;
-  if (tooltip?.textContent?.trim() === "Expand file") return btn;
+  getFilePath(fileEl) {
+    const nameEl = fileEl.querySelector('[class*="file-name"]');
+    if (nameEl) {
+      return (
+        nameEl.textContent
+          ?.replace(/[\u200E\u200F\u202A-\u202E]/g, "")
+          .trim() ?? ""
+      );
+    }
+    return (
+      fileEl.querySelector("[data-clipboard-text]")?.getAttribute("data-clipboard-text") ?? ""
+    );
+  },
 
-  const header = btn.closest('[class*="diff-file-header"]');
-  if (header?.querySelector("button") === btn) return btn;
+  collapseFile(fileEl) {
+    if (isCollapsedNew(fileEl)) {
+      return true;
+    }
+    const btn = getToggleButtonNew(fileEl);
+    if (btn) {
+      btn.click();
+      return true;
+    }
+    return false;
+  },
 
-  return null;
-}
+  expandFile(fileEl) {
+    if (!isCollapsedNew(fileEl)) {
+      return;
+    }
+    const btn = getToggleButtonNew(fileEl);
+    btn?.click();
+  },
 
-function collapseFileNew(fileEl: Element): boolean {
-  if (isCollapsedNew(fileEl)) return true;
-  const btn = getCollapseButtonNew(fileEl);
-  if (btn) {
-    btn.click();
-    return true;
-  }
-  return false;
-}
+  addTestBadge(fileEl) {
+    if (fileEl.querySelector(".test-collapser-badge")) return;
+    const nameEl = fileEl.querySelector('[class*="file-name"]');
+    nameEl?.parentElement?.appendChild(createBadge());
+  },
 
-function expandFileNew(fileEl: Element): void {
-  if (!isCollapsedNew(fileEl)) return;
-  getExpandButtonNew(fileEl)?.click();
-}
+  getObserverTarget() {
+    return (
+      document.querySelector('[class*="PullRequestDiffsList"]') ??
+      document.querySelector('[class*="DiffComparisonViewer"]') ??
+      document.body
+    );
+  },
 
-function addTestBadgeNew(fileEl: Element): void {
-  if (fileEl.querySelector(".test-collapser-badge")) return;
-
-  const fileNameEl = fileEl.querySelector('[class*="file-name"]');
-  if (!fileNameEl?.parentElement) return;
-
-  fileNameEl.parentElement.appendChild(createBadge());
-}
-
-function getObserverTargetNew(): Element {
-  return (
-    document.querySelector('[class*="PullRequestDiffsList"]') ??
-    document.querySelector('[class*="DiffComparisonViewer"]') ??
-    document.body
-  );
-}
-
-function hasNewFilesNew(mutations: MutationRecord[]): boolean {
-  return mutations.some((m) =>
-    Array.from(m.addedNodes).some(
-      (n) =>
-        n.nodeType === 1 &&
-        ((n as Element).matches?.(
-          '[class*="diffEntry"], [class*="Diff-module__diff__"]'
-        ) ||
-          (n as Element).querySelector?.(
-            '[class*="diffEntry"], [class*="Diff-module__diff__"]'
-          ))
-    )
-  );
-}
+  hasNewFiles(mutations) {
+    const sel = '[class*="diffEntry"], [class*="Diff-module__diff__"]';
+    return mutations.some((m) =>
+      Array.from(m.addedNodes).some(
+        (n) =>
+          n.nodeType === 1 &&
+          ((n as Element).matches?.(sel) ||
+            (n as Element).querySelector?.(sel))
+      )
+    );
+  },
+};
 
 // ---------------------------------------------------------------------------
-// Shared helpers
+// Shared
 // ---------------------------------------------------------------------------
 function createBadge(): HTMLSpanElement {
   const badge = document.createElement("span");
   badge.className = "test-collapser-badge";
   badge.textContent = "TEST";
   badge.style.cssText = `
-    display: inline-flex;
-    align-items: center;
-    padding: 1px 6px;
-    margin-left: 8px;
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 18px;
-    border-radius: 12px;
-    background-color: #ddf4ff;
-    color: #0969da;
-    vertical-align: middle;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    display:inline-flex;align-items:center;padding:1px 6px;margin-left:8px;
+    font-size:11px;font-weight:600;line-height:18px;border-radius:12px;
+    background:#ddf4ff;color:#0969da;vertical-align:middle;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
   `;
   return badge;
 }
 
 function getAdapter(): UIAdapter {
-  if (isNewChangesUI()) {
-    return {
-      getFileDiffs: getFileDiffsNew,
-      getFilePath: getFilePathNew,
-      collapseFile: collapseFileNew,
-      expandFile: expandFileNew,
-      addTestBadge: addTestBadgeNew,
-      getObserverTarget: getObserverTargetNew,
-      hasNewFiles: hasNewFilesNew,
-    };
-  }
-  return {
-    getFileDiffs: getFileDiffsClassic,
-    getFilePath: getFilePathClassic,
-    collapseFile: collapseFileClassic,
-    expandFile: expandFileClassic,
-    addTestBadge: addTestBadgeClassic,
-    getObserverTarget: getObserverTargetClassic,
-    hasNewFiles: hasNewFilesClassic,
-  };
+  return isNewChangesUI() ? newAdapter : classicAdapter;
 }
 
 // ---------------------------------------------------------------------------
-// Core processing
+// Core
 // ---------------------------------------------------------------------------
 type StatusResult = {
   testFileCount: number;
@@ -396,55 +309,38 @@ type StatusResult = {
 
 let collapsedCount = 0;
 let testFileCount = 0;
-let processing = false;
 
-function processFiles(collapse = true): StatusResult {
-  if (processing)
-    return { testFileCount, collapsedCount, totalFileCount: 0 };
-  processing = true;
+function processFiles(collapse: boolean): StatusResult {
+  const adapter = getAdapter();
+  const files = adapter.getFileDiffs();
+  collapsedCount = 0;
+  testFileCount = 0;
+
+  files.forEach((fileEl) => {
+    const path = adapter.getFilePath(fileEl);
+    if (!path || !isTestFile(path)) return;
+
+    testFileCount++;
+    adapter.addTestBadge(fileEl);
+
+    if (collapse) {
+      if (adapter.collapseFile(fileEl)) collapsedCount++;
+    } else {
+      adapter.expandFile(fileEl);
+    }
+  });
 
   try {
-    const adapter = getAdapter();
-    const files = adapter.getFileDiffs();
-    collapsedCount = 0;
-    testFileCount = 0;
-
-    files.forEach((fileEl) => {
-      const path = adapter.getFilePath(fileEl);
-      if (!path || !isTestFile(path)) return;
-
-      testFileCount++;
-      adapter.addTestBadge(fileEl);
-
-      if (collapse) {
-        if (fileEl.getAttribute("data-test-collapser-processed") === "true") {
-          collapsedCount++;
-          return;
-        }
-        if (adapter.collapseFile(fileEl)) {
-          fileEl.setAttribute("data-test-collapser-processed", "true");
-          collapsedCount++;
-        }
-      } else {
-        adapter.expandFile(fileEl);
-        fileEl.removeAttribute("data-test-collapser-processed");
-      }
-    });
-
-    chrome.storage.local.set({
-      testFileCount,
-      collapsedCount,
-      totalFileCount: files.length,
-    });
-
-    return { testFileCount, collapsedCount, totalFileCount: files.length };
-  } finally {
-    processing = false;
+    chrome.storage.local.set({ testFileCount, collapsedCount, totalFileCount: files.length });
+  } catch {
+    // context invalidated
   }
+
+  return { testFileCount, collapsedCount, totalFileCount: files.length };
 }
 
 // ---------------------------------------------------------------------------
-// Message listener (popup communication)
+// Message listener
 // ---------------------------------------------------------------------------
 type Message =
   | { action: "getStatus" }
@@ -456,29 +352,22 @@ chrome.runtime.onMessage.addListener(
     if (message.action === "getStatus") {
       const adapter = getAdapter();
       const files = adapter.getFileDiffs();
-      let currentTestCount = 0;
+      let count = 0;
       files.forEach((fileEl) => {
-        const path = adapter.getFilePath(fileEl);
-        if (path && isTestFile(path)) currentTestCount++;
+        if (isTestFile(adapter.getFilePath(fileEl))) count++;
       });
-      sendResponse({
-        testFileCount: currentTestCount,
-        collapsedCount,
-        totalFileCount: files.length,
-      });
+      sendResponse({ testFileCount: count, collapsedCount, totalFileCount: files.length });
     } else if (message.action === "collapseTests") {
       sendResponse(processFiles(true));
     } else if (message.action === "expandTests") {
-      processFiles(false);
-      collapsedCount = 0;
-      sendResponse({ testFileCount, collapsedCount });
+      sendResponse(processFiles(false));
     }
     return true;
   }
 );
 
 // ---------------------------------------------------------------------------
-// Auto-run on page load
+// Auto-run
 // ---------------------------------------------------------------------------
 chrome.storage.local.get({ enabled: true }, (settings) => {
   if (!settings.enabled) return;
@@ -491,17 +380,12 @@ chrome.storage.local.get({ enabled: true }, (settings) => {
   setTimeout(run, 4000);
 
   const adapter = getAdapter();
-
   const observer = new MutationObserver((mutations) => {
     if (!adapter.hasNewFiles(mutations)) return;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(run, 300);
   });
 
-  observer.observe(adapter.getObserverTarget(), {
-    childList: true,
-    subtree: true,
-  });
-
+  observer.observe(adapter.getObserverTarget(), { childList: true, subtree: true });
   setTimeout(() => observer.disconnect(), 30000);
 });

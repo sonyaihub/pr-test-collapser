@@ -3,7 +3,7 @@
   "name": "PR Test File Collapser",
   "version": "1.0.0",
   "description": "Automatically collapses test files in GitHub PR reviews so reviewers can focus on production code first.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "activeTab"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
