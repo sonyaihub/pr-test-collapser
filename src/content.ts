@@ -179,15 +179,7 @@ const classicAdapter: UIAdapter = {
   },
 
   hasNewFiles(mutations) {
-    const sel = ".file[data-tagsearch-path], .file[id^='diff-']";
-    return mutations.some((m) =>
-      Array.from(m.addedNodes).some(
-        (n) =>
-          n.nodeType === 1 &&
-          ((n as Element).matches?.(sel) ||
-            (n as Element).querySelector?.(sel))
-      )
-    );
+    return hasAnyFileMutation(mutations);
   },
 };
 
@@ -196,7 +188,7 @@ const classicAdapter: UIAdapter = {
 // ---------------------------------------------------------------------------
 function isCollapsedNew(fileEl: Element): boolean {
   const header = fileEl.querySelector('[class*="diff-file-header"]');
-  if (header?.className.includes("collapsed")) return true;
+  if (header && /(^|[\s_-])collapsed([\s_-]|$)/.test(header.className)) return true;
   if (fileEl.querySelector(".octicon-chevron-right")) return true;
   return false;
 }
@@ -266,17 +258,25 @@ const newAdapter: UIAdapter = {
   },
 
   hasNewFiles(mutations) {
-    const sel = '[class*="diffEntry"], [class*="Diff-module__diff__"]';
-    return mutations.some((m) =>
-      Array.from(m.addedNodes).some(
-        (n) =>
-          n.nodeType === 1 &&
-          ((n as Element).matches?.(sel) ||
-            (n as Element).querySelector?.(sel))
-      )
-    );
+    return hasAnyFileMutation(mutations);
   },
 };
+
+const ANY_FILE_SELECTOR =
+  ".file[data-tagsearch-path], .file[id^='diff-'], " +
+  '[class*="PullRequestDiffsList-module"], ' +
+  '[class*="diffEntry"], [class*="Diff-module__diff__"]';
+
+function hasAnyFileMutation(mutations: MutationRecord[]): boolean {
+  return mutations.some((m) =>
+    Array.from(m.addedNodes).some(
+      (n) =>
+        n.nodeType === 1 &&
+        ((n as Element).matches?.(ANY_FILE_SELECTOR) ||
+          (n as Element).querySelector?.(ANY_FILE_SELECTOR))
+    )
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Shared
@@ -374,18 +374,38 @@ chrome.storage.local.get({ enabled: true }, (settings) => {
 
   const run = () => processFiles(true);
   let debounceTimer: ReturnType<typeof setTimeout>;
+  const retryTimers: ReturnType<typeof setTimeout>[] = [];
 
-  run();
-  setTimeout(run, 1500);
-  setTimeout(run, 4000);
+  const isFilesPath = () =>
+    /\/pull\/\d+\/(files|changes)/.test(location.pathname);
 
-  const adapter = getAdapter();
+  const kick = () => {
+    retryTimers.forEach(clearTimeout);
+    retryTimers.length = 0;
+    if (!isFilesPath()) return;
+    [0, 500, 1500, 4000, 8000, 15000].forEach((ms) => {
+      retryTimers.push(setTimeout(run, ms));
+    });
+  };
+
+  kick();
+
   const observer = new MutationObserver((mutations) => {
-    if (!adapter.hasNewFiles(mutations)) return;
+    if (!isFilesPath()) return;
+    if (!getAdapter().hasNewFiles(mutations)) return;
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(run, 300);
   });
+  observer.observe(document.body, { childList: true, subtree: true });
 
-  observer.observe(adapter.getObserverTarget(), { childList: true, subtree: true });
-  setTimeout(() => observer.disconnect(), 30000);
+  let lastHref = location.href;
+  const onNavigate = () => {
+    if (location.href === lastHref) return;
+    lastHref = location.href;
+    kick();
+  };
+  window.addEventListener("popstate", onNavigate);
+  document.addEventListener("turbo:load", onNavigate);
+  document.addEventListener("turbo:render", onNavigate);
+  setInterval(onNavigate, 500);
 });

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PR Test File Collapser",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Automatically collapses test files in GitHub PR reviews so reviewers can focus on production code first.",
   "permissions": ["storage", "activeTab"],
   "action": {
@@ -19,10 +19,7 @@
   },
   "content_scripts": [
     {
-      "matches": [
-        "https://github.com/*/pull/*/files*",
-        "https://github.com/*/pull/*/changes*"
-      ],
+      "matches": ["https://github.com/*/pull/*"],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
