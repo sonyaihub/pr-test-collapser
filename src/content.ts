@@ -310,7 +310,27 @@ type StatusResult = {
 let collapsedCount = 0;
 let testFileCount = 0;
 
-function processFiles(collapse: boolean): StatusResult {
+// Paths we've already acted on. Auto-runs skip these so a file the user
+// manually expanded after an initial collapse won't be re-collapsed by the
+// retry timers or mutation observer.
+const handledPaths = new Set<string>();
+let lastPrKey = "";
+
+function getPrKey(): string {
+  const match = location.pathname.match(/\/pull\/(\d+)/);
+  return match ? `${location.hostname}${match[0]}` : "";
+}
+
+function resetIfPrChanged(): void {
+  const key = getPrKey();
+  if (key && key !== lastPrKey) {
+    handledPaths.clear();
+    lastPrKey = key;
+  }
+}
+
+function processFiles(collapse: boolean, force = false): StatusResult {
+  resetIfPrChanged();
   const adapter = getAdapter();
   const files = adapter.getFileDiffs();
   collapsedCount = 0;
@@ -324,9 +344,12 @@ function processFiles(collapse: boolean): StatusResult {
     adapter.addTestBadge(fileEl);
 
     if (collapse) {
+      if (!force && handledPaths.has(path)) return;
       if (adapter.collapseFile(fileEl)) collapsedCount++;
+      handledPaths.add(path);
     } else {
       adapter.expandFile(fileEl);
+      handledPaths.add(path);
     }
   });
 
@@ -358,9 +381,9 @@ chrome.runtime.onMessage.addListener(
       });
       sendResponse({ testFileCount: count, collapsedCount, totalFileCount: files.length });
     } else if (message.action === "collapseTests") {
-      sendResponse(processFiles(true));
+      sendResponse(processFiles(true, true));
     } else if (message.action === "expandTests") {
-      sendResponse(processFiles(false));
+      sendResponse(processFiles(false, true));
     }
     return true;
   }
